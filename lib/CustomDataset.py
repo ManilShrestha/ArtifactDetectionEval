@@ -6,7 +6,7 @@ from lib.Utilities import *
 from scipy.signal import resample
 
 class TimeSeriesHDF5Dataset(Dataset):
-    def __init__(self, file_path, group, segment_len, overlap=0):
+    def __init__(self, file_path, mode, segment_len, overlap=0):
         """
         Args:
             file_path (str): Path to the HDF5 file.
@@ -16,10 +16,10 @@ class TimeSeriesHDF5Dataset(Dataset):
         """
         # Open the file
         self.hdf5_file = h5py.File(file_path, 'r')
-
-        if group == 'ECG':
+        self.mode = mode
+        if mode == 'ECG':
             dataset_name, ts_dataset_name = 'Waveforms/ECG_II','Waveforms/ECG_II_Timestamps'
-        if group == 'ABP':
+        if mode == 'ABP':
             if 'Waveforms/ABP_na' in self.hdf5_file:
                 dataset_name, ts_dataset_name = 'Waveforms/ABP_na','Waveforms/ABP_na_Timestamps'
             else:
@@ -58,6 +58,8 @@ class TimeSeriesHDF5Dataset(Dataset):
             end_idx = len(self.data)
             start_idx = end_idx - self.segment_size
 
+        label = 1 if is_artifact_overlap(self.file_path, self.mode, [start_idx, end_idx]) else 0
+
         # Load data segment
         segment = self.data[start_idx:end_idx]
         
@@ -68,7 +70,7 @@ class TimeSeriesHDF5Dataset(Dataset):
         # Convert to PyTorch tensor
         segment_tensor = torch.from_numpy(segment).float()
 
-        return idx, segment_tensor
+        return idx, segment_tensor, label
 
     def close(self):
         """Close the HDF5 file."""

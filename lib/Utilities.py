@@ -4,7 +4,7 @@ import bisect
 import yaml
 
 
-config_path = 'config.yaml'
+config_path = '/home/ms5267@drexel.edu/moberg-precicecap/ArtifactDetectionEval/config.yaml'
 with open(config_path, 'r') as file:
     config = yaml.safe_load(file)
 
@@ -40,6 +40,10 @@ def is_artifact_overlap(file_path, mode, candidate_interval):
 	import os
 	file_name = os.path.basename(file_path)
 	annotation_file_name = annotation_dir + file_name + '-annotations.csv'
+
+	if not os.path.exists(annotation_file_name):
+		return False
+
 	annotation_df = load_annotation_file(annotation_file_name)
 
 	if mode == 'ABP':
@@ -52,8 +56,6 @@ def is_artifact_overlap(file_path, mode, candidate_interval):
 	# Extract the first two columns and convert to NumPy array
 	artifact_arr = filtered_df.iloc[:, :2].astype(int).to_numpy()
 
-	# Print the resulting NumPy array
-	print(artifact_arr)	
 	return has_artifact(candidate_interval, artifact_arr)
 
 
@@ -107,3 +109,12 @@ def find_idx_from_ts(timestamp_list, start_timestamp, end_timestamp):
     # Find the position for the end_timestamp, where it would be placed after any equal values.
     end_idx = bisect.bisect_right(timestamp_list, end_timestamp)  # Subtract 1 to include the end_timestamp itself if it's in the lists
     return start_idx, end_idx
+
+def filter_batch(batch, filter_pos_pct=0.8):
+	# Create a boolean tensor that is True where data is positive
+	is_positive = batch > 0
+	# Compute the proportion of positive values in each row
+	proportion_positive = is_positive.float().mean(dim=1)
+	# Filter rows where more than 90% of the values are positive
+	
+	return proportion_positive > filter_pos_pct
