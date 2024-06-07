@@ -4,9 +4,10 @@ import torch
 from torch.utils.data import Dataset
 from lib.Utilities import *
 from scipy.signal import resample
+import yaml
 
 class TimeSeriesHDF5Dataset(Dataset):
-    def __init__(self, file_path, mode, segment_len, overlap=0):
+    def __init__(self, file_path, mode, segment_len, overlap=0, smoothen=True):
         """
         Args:
             file_path (str): Path to the HDF5 file.
@@ -38,9 +39,12 @@ class TimeSeriesHDF5Dataset(Dataset):
         self.segment_len = segment_len
         self.overlap = overlap
         self.segment_size = self.sampling_freq * segment_len 
+        self.smoothen = smoothen
 
         # Compute the total number of segments in the dataset
         self.total_segments = int((len(self.data) - self.segment_size)//(self.segment_size-(overlap * self.segment_size)))
+
+        self.segment_length_sec = config['segment_length_sec']
 
         # log_info(f'There are a total of : {self.total_segments} segments of {self.segment_len} seconds with overlap of {self.overlap*100}%')
 
@@ -63,9 +67,13 @@ class TimeSeriesHDF5Dataset(Dataset):
         # Load data segment
         segment = self.data[start_idx:end_idx]
         
-        if self.sampling_freq!=125:
-            number_of_samples = int(len(segment) * 125 / self.sampling_freq)
+        if self.sampling_freq!=config['sampling_rate']:
+            number_of_samples = int(len(segment) * config['sampling_rate'] / self.sampling_freq)
             segment = resample(segment, number_of_samples)
+
+        if self.smoothen:
+            segment = moving_average_filter(segment, window_size=3)
+
 
         # Convert to PyTorch tensor
         segment_tensor = torch.from_numpy(segment).float()

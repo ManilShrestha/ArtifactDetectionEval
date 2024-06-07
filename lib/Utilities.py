@@ -49,7 +49,7 @@ def is_artifact_overlap(file_path, mode, candidate_interval):
 	if mode == 'ABP':
 		filter = ['ABP', 'ART', 'ART1', 'ART2']
 	else:
-		filter = 'ECG'
+		filter = ['ECG']
 	
 	# Filter the DataFrame
 	filtered_df = annotation_df[annotation_df.iloc[:, -2].isin(filter)]
@@ -110,11 +110,40 @@ def find_idx_from_ts(timestamp_list, start_timestamp, end_timestamp):
     end_idx = bisect.bisect_right(timestamp_list, end_timestamp)  # Subtract 1 to include the end_timestamp itself if it's in the lists
     return start_idx, end_idx
 
-def filter_batch(batch, filter_pos_pct=0.8):
+def filter_abp_batch(batch, label, filter_pos_pct=0.8):
+	"""
+    Filters rows in the batch based on the proportion of positive values and label is 0
+	"""
 	# Create a boolean tensor that is True where data is positive
 	is_positive = batch > 0
+	label_filter = label==0
 	# Compute the proportion of positive values in each row
 	proportion_positive = is_positive.float().mean(dim=1)
 	# Filter rows where more than 90% of the values are positive
 	
-	return proportion_positive > filter_pos_pct
+	flag =  proportion_positive > filter_pos_pct
+	flag = flag & label_filter
+
+	return flag
+
+
+
+def filter_ecg_batch(batch, label, filter_pos_pct=0.8):
+	"""
+    Filters rows in the batch based on the proportion of values>4 and label is zero.
+	"""
+	# Create a boolean tensor that is True where data is positive
+	filter_lt4 = batch < 4
+	label_filter = label==0
+
+	# Compute the proportion of positive values in each row
+	proportion_positive = filter_lt4.float().mean(dim=1)
+	# Filter rows where more than 80% of the values are positive
+	flag = proportion_positive > filter_pos_pct
+	flag = flag & label_filter
+	
+	return flag
+
+
+def moving_average_filter(signal, window_size=5):
+	return np.convolve(signal, np.ones(window_size) / window_size, mode='same')
