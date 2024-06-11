@@ -17,39 +17,46 @@ class TimeSeriesHDF5Dataset(Dataset):
         """
         # Open the file
         self.hdf5_file = h5py.File(file_path, 'r')
+        self.mode_exists =True
         self.mode = mode
         if mode == 'ECG':
             dataset_name, ts_dataset_name = 'Waveforms/ECG_II','Waveforms/ECG_II_Timestamps'
         if mode == 'ABP':
-            if 'Waveforms/ABP_na' in self.hdf5_file:
-                dataset_name, ts_dataset_name = 'Waveforms/ABP_na','Waveforms/ABP_na_Timestamps'
-            else:
-                dataset_name, ts_dataset_name = 'Waveforms/ART_na','Waveforms/ART_na_Timestamps'
-        
-        self.data = self.hdf5_file[dataset_name]
-        timestamp = self.hdf5_file[ts_dataset_name]
-        self.sampling_freq = round(get_sampling_freq(timestamp[0:10]))
+            dataset_name, ts_dataset_name = 'Waveforms/ABP_na','Waveforms/ABP_na_Timestamps'
+        if mode == 'ART':
+            dataset_name, ts_dataset_name = 'Waveforms/ART_na','Waveforms/ART_na_Timestamps'
 
-        # log_info(f'Sampling frequency for this file is: {self.sampling_freq}')
-        # if self.sampling_freq!=125:
-        #     log_info(f'Frequency will be resampled to 125Hz.')
+        # if mode == 'ABP':
+        #     if 'Waveforms/ABP_na' in self.hdf5_file:
+        #         dataset_name, ts_dataset_name = 'Waveforms/ABP_na','Waveforms/ABP_na_Timestamps'
+        #     else:
+        #         dataset_name, ts_dataset_name = 'Waveforms/ART_na','Waveforms/ART_na_Timestamps'
+        if dataset_name not in self.hdf5_file:
+            print(f"No {dataset_name} in the hdf5 file. Need to Abort!!!")
+            self.mode_exists = False
+        else:
+            self.data = self.hdf5_file[dataset_name]
+            self.timestamp = self.hdf5_file[ts_dataset_name]
+            self.sampling_freq = round(get_sampling_freq(self.timestamp[0:10]))
 
-        self.file_path = file_path
-        self.dataset_name = dataset_name
-        self.segment_len = segment_len
-        self.overlap = overlap
-        self.segment_size = self.sampling_freq * segment_len 
-        self.smoothen = smoothen
+            self.file_path = file_path
+            self.dataset_name = dataset_name
+            self.segment_len = segment_len
+            self.overlap = overlap
+            self.segment_size = self.sampling_freq * segment_len
+            self.smoothen = smoothen
 
-        # Compute the total number of segments in the dataset
-        self.total_segments = int((len(self.data) - self.segment_size)//(self.segment_size-(overlap * self.segment_size)))
+            # Compute the total number of segments in the dataset
+            self.total_segments = int((len(self.data) - self.segment_size)//(self.segment_size-(overlap * self.segment_size)))
 
-        self.segment_length_sec = config['segment_length_sec']
+            self.segment_length_sec = config['segment_length_sec']
 
         # log_info(f'There are a total of : {self.total_segments} segments of {self.segment_len} seconds with overlap of {self.overlap*100}%')
 
 
     def __len__(self):
+        if not self.mode_exists:
+            return -100
         return self.total_segments
 
     def __getitem__(self, idx):
@@ -62,11 +69,17 @@ class TimeSeriesHDF5Dataset(Dataset):
             end_idx = len(self.data)
             start_idx = end_idx - self.segment_size
 
-        label = 1 if is_artifact_overlap(self.file_path, self.mode, [start_idx, end_idx]) else 0
-
         # Load data segment
         segment = self.data[start_idx:end_idx]
-        
+        timestamp_segment = self.timestamp[start_idx:end_idx]
+
+        is_outlier = check_outlier(segment, self.mode)
+
+        if not is_outlier:
+            label = 1 if is_artifact_overlap(self.file_path, self.mode, [start_idx,end_idx]) else 0
+        else:
+            label = 1
+
         if self.sampling_freq!=config['sampling_rate']:
             number_of_samples = int(len(segment) * config['sampling_rate'] / self.sampling_freq)
             segment = resample(segment, number_of_samples)
@@ -78,7 +91,7 @@ class TimeSeriesHDF5Dataset(Dataset):
         # Convert to PyTorch tensor
         segment_tensor = torch.from_numpy(segment).float()
 
-        return idx, segment_tensor, label
+        return start_idx, segment_tensor, label, timestamp_segment
 
     def close(self):
         """Close the HDF5 file."""

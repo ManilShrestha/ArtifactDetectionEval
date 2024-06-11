@@ -26,10 +26,10 @@ sampling_rate = config['sampling_rate']
 overlap = config['overlap']
 
 latent_dim = 10
-lr = 1e-3
+lr = 1e-4
 epochs = 10
 batch_size=64
-percentile_threshold = 99
+percentile_threshold = 90
 
 device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
 best_model_path = 'models/deep_clean_ecg_best.pt'
@@ -82,6 +82,8 @@ def train(train_files, test_file, reset=False):
 		mean = torch.load(f'{config["stored_mean_ecg"]}_{segment_length_sec}sec')
 		std = torch.load(f'{config["stored_std_ecg"]}_{segment_length_sec}sec')
 
+	log_info(f'To standardize we have Mean: {mean} and standard deviation: {std}')
+
 	for epoch in tqdm(range(epochs)):
 		vae.train()
 		train_loss = 0
@@ -95,7 +97,7 @@ def train(train_files, test_file, reset=False):
 			dataset  = TimeSeriesHDF5Dataset(datafile, mode, segment_length_sec, overlap)    
 			dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=4,shuffle=True, pin_memory=True)
 	
-			for _, data, label in dataloader:
+			for _, data, label, ts in dataloader:
 				
 				filter = filter_ecg_batch(data, label)
 				data = data.unsqueeze(1).float().to(device)[filter]
@@ -157,7 +159,7 @@ def test(test_file, vae=None):
 	std = torch.load(f'{config["stored_std_ecg"]}_{segment_length_sec}sec')
 
 	with torch.no_grad():
-		for _, data, label in dataloader:
+		for _, data, label, ts in dataloader:
 			data = data.unsqueeze(1).float().to(device)
 
 			data = (data-mean)/std
@@ -214,7 +216,7 @@ def get_threshold(vae, train_files, percentile_threshold=90):
 			dataset  = TimeSeriesHDF5Dataset(datafile, mode, segment_length_sec, overlap)    
 			dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=4,shuffle=True, pin_memory=True)
 
-			for _, data, label in dataloader:
+			for _, data, label, ts in dataloader:
 				filter = filter_ecg_batch(data, label)
 				data = data.unsqueeze(1).float().to(device)[filter]
 
@@ -231,43 +233,41 @@ def get_threshold(vae, train_files, percentile_threshold=90):
 
 
 def compute_mean_std(train_files):
-	"""Computes mean and standard deviation of the dataset
+    """Computes mean and standard deviation of the entire dataset.
 
-	Args:
-		train_files (list): list of training files
+    Args:
+        train_files (list): list of training files.
+    Returns:
+        tuple: mean and standard deviation of the entire dataset.
+    """
+    # Initialize sum and sum of squares
+    sum_data = 0
+    sum_sq_data = 0
+    n = 0
+    log_info("Computing mean and standard deviation from the training hdf5 files.")
+    with torch.no_grad():
+        for filename in tqdm(train_files):
+            log_info(f"Processing {filename}")
+            datafile = os.path.join(directory_path, filename)
 
-	Returns:
-		tuple: mean and standard deviation
-	"""
-	# Initialize sum and sum of squares
-	sum_data = torch.zeros((1, int(segment_length_sec * sampling_rate)), device=device)
-	sum_sq_data = torch.zeros((1,int(segment_length_sec * sampling_rate)), device=device)
-	n = 0
-	log_info("Computing mean and standard deviation from the training hdf5 files.")
-	with torch.no_grad():
-		for filename in tqdm(train_files):
-			log_info(f"Processing {filename}")
-			datafile = os.path.join(directory_path, filename)
+            # Load the dataset
+            dataset = TimeSeriesHDF5Dataset(datafile, mode, segment_length_sec, overlap)
+            dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=4, shuffle=False, pin_memory=True)
 
-			# Load the dataset
-			dataset = TimeSeriesHDF5Dataset(datafile, mode, segment_length_sec, overlap)
-			dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=4, shuffle=False, pin_memory=True)
+            # Loop through batches in the DataLoader
+            for _, data, label, ts in dataloader:
+                filter = filter_ecg_batch(data, label)
+                data = data[filter].float().to(device)  # No need to unsqueeze for single-channel data
 
-			# Loop through batches in the DataLoader
-			for _, data, label in dataloader:
-				filter = filter_ecg_batch(data, label)
-				data = data.unsqueeze(1).float().to(device)[filter]
-				
-				data = data.to(device)  # Ensure data is on GPU
-				sum_data += torch.sum(data, dim=0)
-				sum_sq_data += torch.sum(data ** 2, dim=0)
-				# Update sample count
-				n += len(data)
-	# Compute mean and standard deviation
-	mean = sum_data / n
-	std_dev = torch.sqrt(sum_sq_data / n - mean ** 2)
+                sum_data += torch.sum(data)
+                sum_sq_data += torch.sum(data ** 2)
+                n += data.numel()
 
-	return mean, std_dev
+    # Compute mean and standard deviation
+    mean = sum_data / n
+    std_dev = torch.sqrt((sum_sq_data / n) - (mean ** 2))
+
+    return mean.item(), std_dev.item()
 
 
 if __name__ == '__main__':
@@ -275,8 +275,8 @@ if __name__ == '__main__':
 
 	# test_file = '85_Patient_2023-05-12_17:53.h5'
 
-	train_files = ['59_Patient_2022-01-31_23:19.h5', '74_Patient_2023-08-05_06:00.h5', '110_Patient_2023_Sep_28__23_52_07_705708.h5', '90_Patient_2023-03-21_19:57.h5']
+	train_files = ['59_Patient_2022-01-31_23:19.h5', '74_Patient_2023-08-05_06:00.h5', '110_Patient_2023_Sep_28__23_52_07_705708.h5', '90_Patient_2023-03-21_19:57.h5', '35_Patient_2023-04-03_19:51.h5']
 
 	test_file = '34_Patient_2023-04-04_22:31.h5'
-	train(train_files, test_file, reset=False)
+	train(train_files, test_file, reset=True)
 	test(test_file)
