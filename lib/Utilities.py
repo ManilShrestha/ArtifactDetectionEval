@@ -34,7 +34,7 @@ def is_artifact_overlap(file_path, mode, candidate_idx):
 
 	Args:
 		file_path (str): Path of the datafile, this is to get the name of file
-		mode (str): Either ABP or ECG
+		mode (str): Either ABP, ART or ECG
 		start_idx (int): Start index
 		end_idx (int): End index
 	"""
@@ -161,9 +161,8 @@ def filter_exclude_outliers(batch, label, filter_pos_pct=0.5):
 
 def filter_ecg_batch(batch, label, filter_pos_pct=0.8):
 	"""
-	Filters rows in the batch based on the proportion of values>4 and label is zero.
+	Filters rows in the batch based on the proportion of values<4 and label is zero.
 	"""
-	# Create a boolean tensor that is True where data is positive
 	filter_lt4 = batch < 4
 	label_filter = label==0
 
@@ -180,6 +179,7 @@ def check_outlier(segment, mode, pct=0.5):
 	thresholds = {
 		'ABP': (30, 350),
 		'ECG': (-4, 4),
+		'ART': (30, 350)
 	}
 	if mode not in thresholds:
 		raise ValueError("Unsupported mode provided")

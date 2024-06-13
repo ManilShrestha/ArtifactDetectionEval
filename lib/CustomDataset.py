@@ -11,9 +11,10 @@ class TimeSeriesHDF5Dataset(Dataset):
         """
         Args:
             file_path (str): Path to the HDF5 file.
-            dataset_name (str): The name of the dataset in the HDF5 file.
-            sampling_freq (int): The sampling frequency of the time series data.
-            segment_len (int): The length of time (in seconds) of the segments to return.
+            mode (str): ABP, ART or ECG. The mode of signal to extract
+            segment_len (int): Length of signal in seconds.
+            overlap (float): How much overlap is required. 0.5 means 50% of overlap from previous segment.
+            smoothen (Bool): Should the returned signal be smoothen with Moving average filter.
         """
         # Open the file
         self.hdf5_file = h5py.File(file_path, 'r')
@@ -32,7 +33,7 @@ class TimeSeriesHDF5Dataset(Dataset):
         #     else:
         #         dataset_name, ts_dataset_name = 'Waveforms/ART_na','Waveforms/ART_na_Timestamps'
         if dataset_name not in self.hdf5_file:
-            print(f"No {dataset_name} in the hdf5 file. Need to Abort!!!")
+            log_info(f"No {dataset_name} in the hdf5 file: {self.hdf5_file}.")
             self.mode_exists = False
         else:
             self.data = self.hdf5_file[dataset_name]
@@ -56,7 +57,7 @@ class TimeSeriesHDF5Dataset(Dataset):
 
     def __len__(self):
         if not self.mode_exists:
-            return -100
+            return 0
         return self.total_segments
 
     def __getitem__(self, idx):
