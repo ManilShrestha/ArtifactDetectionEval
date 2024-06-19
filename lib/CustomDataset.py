@@ -51,9 +51,10 @@ class TimeSeriesHDF5Dataset(Dataset):
 			self.smoothen = smoothen
 
 			# Compute the total number of segments in the dataset
-			self.total_segments = int((len(self.data) - self.segment_size)//(self.segment_size-(overlap * self.segment_size)))
+			# self.total_segments = int((len(self.data) - self.segment_size)//(self.segment_size-(overlap * self.segment_size)))
+			self.total_segments = int((len(self.data) - self.segment_size) // (self.segment_size * (1 - self.overlap))) + 1
 
-			self.segment_length_sec = config['segment_length_sec']
+			# self.segment_length_sec = config['segment_length_sec']
 
 		# log_info(f'There are a total of : {self.total_segments} segments of {self.segment_len} seconds with overlap of {self.overlap*100}%')
 
@@ -65,7 +66,15 @@ class TimeSeriesHDF5Dataset(Dataset):
 
 	def __getitem__(self, idx):
 		# Calculate start and end indices of the segment
-		start_idx = (idx * self.segment_size - int(self.overlap*self.segment_size)) if idx>0 else idx * self.segment_size
+
+		# start_idx = (idx * self.segment_size - int(self.overlap*self.segment_size)) if idx>0 else idx * self.segment_size
+		# end_idx = start_idx + self.segment_size
+
+		if idx == 0:
+			start_idx = 0
+		else:
+			start_idx = int(idx * self.segment_size * (1 - self.overlap))
+		
 		end_idx = start_idx + self.segment_size
 
 		# Ensure accessing the data does not exceed the actual data length
@@ -110,7 +119,7 @@ class TimeSeriesHDF5Dataset(Dataset):
 
 ## This class is for generating the pulse image for SCAE
 class PulseFromHDF5Dataset(Dataset):
-	def __init__(self, filename, mode='ABP'):
+	def __init__(self, filename, mode='ABP', phase= 'train'):
 		# Open the file
 		
 		hdf5_file_path = config['hdf5_file_dir'] + filename
@@ -118,15 +127,27 @@ class PulseFromHDF5Dataset(Dataset):
 		self.hdf5_file = h5py.File(hdf5_file_path, 'r')
 		self.mode = mode
 		
-		if mode == 'ECG':
-			dataset_name, ts_dataset_name = 'Waveforms/ECG_II','Waveforms/ECG_II_Timestamps'
-			scae_indices_file = config["scae_ecg_indices_file"]
-		if mode == 'ABP':
-			dataset_name, ts_dataset_name = 'Waveforms/ABP_na','Waveforms/ABP_na_Timestamps'
-			scae_indices_file = config["scae_abp_indices_file"]
-		if mode == 'ART':
-			dataset_name, ts_dataset_name = 'Waveforms/ART_na','Waveforms/ART_na_Timestamps'
-			scae_indices_file = config["scae_abp_indices_file"]
+		if phase=='train':
+			if mode == 'ECG':
+				dataset_name, ts_dataset_name = 'Waveforms/ECG_II','Waveforms/ECG_II_Timestamps'
+				scae_indices_file = config["scae_ecg_indices_file"]
+			if mode == 'ABP':
+				dataset_name, ts_dataset_name = 'Waveforms/ABP_na','Waveforms/ABP_na_Timestamps'
+				scae_indices_file = config["scae_abp_indices_file"]
+			if mode == 'ART':
+				dataset_name, ts_dataset_name = 'Waveforms/ART_na','Waveforms/ART_na_Timestamps'
+				scae_indices_file = config["scae_abp_indices_file"]
+		
+		elif phase == 'test':
+			if mode == 'ECG':
+				dataset_name, ts_dataset_name = 'Waveforms/ECG_II','Waveforms/ECG_II_Timestamps'
+				scae_indices_file = config["scae_ecg_indices_file_test"]
+			if mode == 'ABP':
+				dataset_name, ts_dataset_name = 'Waveforms/ABP_na','Waveforms/ABP_na_Timestamps'
+				scae_indices_file = config["scae_abp_indices_file_test"]
+			if mode == 'ART':
+				dataset_name, ts_dataset_name = 'Waveforms/ART_na','Waveforms/ART_na_Timestamps'
+				scae_indices_file = config["scae_abp_indices_file_test"]
 			
 			
 		# First read the scae_abp_indices_file

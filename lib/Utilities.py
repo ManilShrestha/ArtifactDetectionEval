@@ -261,3 +261,19 @@ def convert_1d_into_image(signal, image_width = 64, image_height=64):
 	image = np.rot90(image, k=1)
 
 	return image
+
+
+def filter_abp_batch_scae(batch, filter_pos_pct=0.5):
+	"""
+	Filters rows in the batch based on the proportion of positive values and label is 0
+	"""
+	# Create a boolean tensor that is True where data is positive
+	is_positive = (batch > 30) & (batch<350)
+
+	# Compute the proportion of positive values in each row
+	proportion_positive = is_positive.float().mean(dim=1)
+
+	# Filter rows where more than 90% of the values are positive
+	flag =  proportion_positive > filter_pos_pct
+
+	return flag
