@@ -2,6 +2,10 @@ from datetime import datetime
 import numpy as np
 import bisect
 import yaml
+import os
+import scipy
+import matplotlib.pyplot as plt
+import pytz
 
 
 config_path = '/home/ms5267@drexel.edu/moberg-precicecap/ArtifactDetectionEval/config.yaml'
@@ -12,6 +16,24 @@ annotation_dir = config['annotation_dir']
 
 def log_info(log_message):
 	print( datetime.now().strftime("%H:%M:%S"),":\t ", log_message , "\n")
+
+
+def display_image(image):
+	plt.imshow(image, cmap='viridis', aspect='auto')
+	plt.title('1D Signal Represented in 64x64 Image')
+	plt.show()
+
+
+def print_time_from_ts(ts):
+	utc_time = datetime.fromtimestamp(int(ts)/1e6, tz=pytz.utc)
+
+	# Now convert UTC time to Eastern Standard Time (EST)
+	eastern = pytz.timezone('US/Eastern')
+	est_time = utc_time.astimezone(eastern)
+
+	# Print both times to see the result
+	print("UTC Time:", utc_time)
+	print("Eastern Time:", est_time)
 
 
 def load_annotation_file(ann_file_path):
@@ -29,7 +51,7 @@ def load_annotation_file(ann_file_path):
 	# df.columns = ['ID1', 'ID2', 'Session', 'Data_Type', 'Start_Time', 'End_Time', 'Signal_Type', 'Lead_Type']
 	return df
 
-def is_artifact_overlap(file_path, mode, candidate_idx):
+def is_artifact_overlap(file_path, mode, candidate_idx, phase="train"):
 	"""Finds if the given indices contain artifact or not
 
 	Args:
@@ -38,8 +60,13 @@ def is_artifact_overlap(file_path, mode, candidate_idx):
 		start_idx (int): Start index
 		end_idx (int): End index
 	"""
-	import os
+	if phase == 'train':
+		annotation_dir = config['annotation_dir']
+	else:
+		annotation_dir = config['annotation_strict_dir']
+
 	file_name = os.path.basename(file_path)
+	
 	annotation_file_name = annotation_dir + file_name + '-annotations.csv'
 
 	if not os.path.exists(annotation_file_name):
@@ -175,7 +202,7 @@ def filter_ecg_batch(batch, label, filter_pos_pct=0.8):
 	return flag
 
 
-def check_outlier(segment, mode, pct=0.5):
+def check_outlier(segment, mode, pct=0.3):
 	thresholds = {
 		'ABP': (30, 350),
 		'ECG': (-4, 4),
@@ -202,3 +229,35 @@ def moving_average_filter(signal, window_size=5):
 	averaged_signal = np.convolve(padded_signal, np.ones(window_size) / window_size, mode='valid')
 	
 	return averaged_signal
+
+
+
+def interpolate_and_normalize(signal, target_size = 64):
+
+	# Original indices
+	x_original = np.arange(len(signal))
+
+	# New indices for the desired length of 64
+	x_new = np.linspace(0, len(signal) - 1, target_size)
+
+	# Perform cubic spline interpolation
+	cs = scipy.interpolate.CubicSpline(x_original, signal)
+	interpolated_array = cs(x_new)
+
+	# Normalize the interpolated array to have values between 0 and 1
+	normalized_array = (interpolated_array - interpolated_array.min()) / (interpolated_array.max() - interpolated_array.min())
+	
+	# Convert the nan elements to zero
+	normalized_array[np.isnan(normalized_array)] = 0
+
+	return normalized_array
+
+
+def convert_1d_into_image(signal, image_width = 64, image_height=64):
+	image=np.zeros((image_width,image_height))
+	for x,y in enumerate(signal):
+		image[x][int(y*(image_height-1))]=1
+	
+	image = np.rot90(image, k=1)
+
+	return image

@@ -15,24 +15,25 @@ import os
 import wandb
 
 torch.manual_seed(10)
+
 ############### SCRIPT VARIABLES #######################
 segment_length_sec = config['segment_length_sec']
 sampling_rate = config['sampling_rate']
 overlap = config['overlap']
 
-latent_dim = 20
+latent_dim = 5
 lr = 1e-3
 epochs = 50
 batch_size=64
-percentile_threshold = 95
 
 device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
 best_model_path = 'models/deep_clean_abp_best.pt'
 directory_path = '/storage/ms5267@drexel.edu/precicecap_downloads/'
 mode = ['ABP','ART']
 
-percentile_threshold_list = [10,20,30,40,50,60,70,80,90,95,99]
+#########################################################
 
+percentile_threshold_list = [1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,95,99]
 
 
 def test(test_file, vae=None):
@@ -87,8 +88,6 @@ def test(test_file, vae=None):
 		log_info(f"Accuracy:{accuracy_score(pred_label, truth_label)}")
 		log_info(f"F1: {f1_score(pred_label, truth_label)}")
 		print(confusion_matrix(truth_label, pred_label))
-
-		return accuracy_score(pred_label, truth_label), f1_score(pred_label, truth_label), confusion_matrix(truth_label, pred_label), precision_score(truth_label, pred_label), recall_score(truth_label, pred_label)
 
 
 def get_threshold(vae, train_files):
