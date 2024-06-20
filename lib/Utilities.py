@@ -277,3 +277,9 @@ def filter_abp_batch_scae(batch, filter_pos_pct=0.5):
 	flag =  proportion_positive > filter_pos_pct
 
 	return flag
+
+
+def save_model(model, path):
+	import pickle
+	with open(path,'wb') as f:
+		pickle.dump(model,f)

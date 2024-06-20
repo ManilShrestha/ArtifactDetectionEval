@@ -13,7 +13,7 @@ import time
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, confusion_matrix
 import yaml
 import os
-
+import csv
 from lib.FE_ExtractFeatures import ExtractFeatures
 
 
@@ -23,7 +23,14 @@ overlap = 0.95
 directory_path = config['hdf5_file_dir']
 mode = ['ABP','ART']
 
-hdf5_files = ['4_Patient_2022-02-05_08:59.h5']
+hdf5_files = [		  '4_Patient_2022-02-05_08:59.h5'
+					, '34_Patient_2023-04-04_22:31.h5'
+					, '35_Patient_2023-04-03_19:51.h5'
+					, '50_Patient_2023-06-12_21:10.h5'
+					, '53_Patient_2023-06-25_21:39.h5'
+					, '90_Patient_2023-03-21_12:19.h5'
+					, '85_Patient_2023-05-12_17:53.h5'
+					]
 
 out_file = 'data/FE_features_train.csv'
 
@@ -68,7 +75,7 @@ for filename in tqdm(hdf5_files):
 						input_data = signal_data.unsqueeze(dim=0).numpy()
 						features = ExtractFeatures(input_data).get_features().squeeze()
 						
-						per_segment_features = [datafile, m, label.item()] + features.tolist()
+						per_segment_features = [filename, m, label.item()] + features.tolist()
 						features_all.append(per_segment_features)
 		
 		# For non-artifact segments
@@ -86,8 +93,8 @@ for filename in tqdm(hdf5_files):
 
 			if len(start_i)>0:
 				for b_n in range(len(start_i)):
-					if non_artifact_count>=artifact_count:
-						break
+					# if non_artifact_count>=artifact_count:
+					# 	break
 					start_idx = start_i[b_n]
 					label = lbl[b_n]
 					timestamp  = ts[b_n]
@@ -98,10 +105,10 @@ for filename in tqdm(hdf5_files):
 						input_data = signal_data.unsqueeze(dim=0).numpy()
 						features = ExtractFeatures(input_data).get_features().squeeze()
 						
-						per_segment_features = [datafile, m, label.item()] + features.tolist()
+						per_segment_features = [filename, m, label.item()] + features.tolist()
 						features_all.append(per_segment_features)
 		
-		print(f"For {filename} {m}. Total artifact pulses: {artifact_count} and total non-artifact pulses: {non_artifact_count}")
+		print(f"For {filename} {m}. Total artifact: {artifact_count} and total non-artifact: {non_artifact_count}")
 
 
 print(f"Writing into file {out_file}.")
@@ -110,6 +117,6 @@ with open(out_file, 'w', newline='') as file:
 	writer = csv.writer(file)
 	
 	# Write the data to the CSV file
-	writer.writerows(artifact_pulse_indices)
+	writer.writerows(features_all)
 
 	print(f"Data written in: {out_file}")
