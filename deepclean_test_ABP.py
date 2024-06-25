@@ -49,11 +49,12 @@ def test(test_file, vae=None):
 
 	mseloss = torch.nn.MSELoss(reduction = 'none')
 	test_mseloss_arr, truth_label = [], []
+	timestamps = []
 
 	datafile = os.path.join(directory_path, test_file)
 	
 	for m in mode:
-		dataset  = TimeSeriesHDF5Dataset(datafile, m, segment_length_sec, overlap)
+		dataset  = TimeSeriesHDF5Dataset(datafile, m, segment_length_sec, overlap=0)
 
 		if len(dataset)!=0:    
 			dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=4,shuffle=True, pin_memory=True)
@@ -75,6 +76,7 @@ def test(test_file, vae=None):
 					# Append MSE loss for each instance to the list
 					test_mseloss_arr.extend(mseloss_per_instance)
 					truth_label.extend(label.cpu().numpy())
+					timestamps.extend([ts[0], ts[-1]])
 
 	mseloss_arr = get_threshold(vae, train_files)
 
@@ -175,14 +177,17 @@ def compute_mean_std(train_files):
 
 if __name__ == '__main__':
 	train_files = [
-					'4_Patient_2022-02-05_08:59.h5'
-					, '34_Patient_2023-04-04_22:31.h5'
-					, '35_Patient_2023-04-03_19:51.h5'
-					, '50_Patient_2023-06-12_21:10.h5'
-					, '53_Patient_2023-06-25_21:39.h5'
-					, '90_Patient_2023-03-21_12:19.h5' ]
+						'85_Patient_2023-05-12_17:53.h5'
+					# '4_Patient_2022-02-05_08:59.h5'
+					#'34_Patient_2023-04-04_22:31.h5'
+					# , '35_Patient_2023-04-03_19:51.h5'
+					# , '50_Patient_2023-06-12_21:10.h5'
+					# , '53_Patient_2023-06-25_21:39.h5'
+					# , '90_Patient_2023-03-21_12:19.h5' 
+					]
 	
-	test_file = '85_Patient_2023-05-12_17:53.h5'
+	test_file = '85_Patient_2023-05-12_17:53.h5'#'34_Patient_2023-04-04_22:31.h5'
+	
 	# test_file = '90_Patient_2023-03-21_12:19.h5'
 	
 	# train_files = ['73_Patient_2017_Dec_18__11_19_55_297272.h5', '59_Patient_2022-01-31_23:19.h5', '74_Patient_2023-08-05_06:00.h5', '34_Patient_2023-04-04_22:31.h5']

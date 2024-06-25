@@ -51,6 +51,47 @@ def load_annotation_file(ann_file_path):
 	# df.columns = ['ID1', 'ID2', 'Session', 'Data_Type', 'Start_Time', 'End_Time', 'Signal_Type', 'Lead_Type']
 	return df
 
+def get_stop_idx(file_path, mode):
+	"""Finds the end idx as annotated by annotator if it exists. The keyword is stop at the end (case insensitive)
+
+	Args:
+		file_path (str): Path of the datafile, this is to get the name of file
+		mode (str): Either ABP, ART or ECG
+		start_idx (int): Start index
+		end_idx (int): End index
+	"""
+	annotation_dir = config['base_annotation_dir']
+
+	file_name = os.path.basename(file_path)
+	
+	annotation_file_name = annotation_dir + file_name + '-annotations.csv'
+
+	if not os.path.exists(annotation_file_name):
+		print("No annotation file exists.")
+		return False
+
+	annotation_df = load_annotation_file(annotation_file_name)
+
+	if mode == 'ABP':
+		filter = ['ABP']
+	elif mode =='ART':
+		filter = ['ART']
+	elif mode == 'ECG':
+		filter = ['ECG']
+	
+	
+	# Filter the DataFrame
+	filtered_df = annotation_df[annotation_df.iloc[:, -1].isin(filter)]
+	# Extract the first two columns and convert to NumPy array
+	stop_val_df = filtered_df[filtered_df['Data_Type'].str.contains('STOP', case=False, na=False)]
+
+	if not filtered_df.empty:
+		stop_idx = stop_val_df['ID1'].min()
+		return stop_idx
+	else:
+		return -1
+
+
 def is_artifact_overlap(file_path, mode, candidate_idx, phase="train"):
 	"""Finds if the given indices contain artifact or not
 
@@ -283,3 +324,18 @@ def save_model(model, path):
 	import pickle
 	with open(path,'wb') as f:
 		pickle.dump(model,f)
+
+
+def resample_ts(array, x):
+    original_size = len(array)
+    
+    if x > original_size:
+        # Padding with the same value (let's use the last value for padding)
+        pad_value = array[-1]
+        new_array = np.pad(array, (0, x - original_size), 'constant', constant_values=(pad_value,))
+    else:
+        # Sampling the array (uniformly sampling indices)
+        indices = np.linspace(0, original_size - 1, x, dtype=int)
+        new_array = array[indices]
+    
+    return new_array

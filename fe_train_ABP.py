@@ -17,8 +17,8 @@ def train_and_eval_SVM(X_train, y_train, X_test, y_test):
     svm_classifier.fit(X_train, y_train)
 
     log_info("Evaluating the SVM classifier")
-    y_pred_train = svm_classifier.predict(X_train)
-    log_info(f"Train Accuracy: {accuracy_score(y_train, y_pred_train)}\n{classification_report(y_train, y_pred_train)}\n{confusion_matrix(y_train, y_pred_train)}")
+    # y_pred_train = svm_classifier.predict(X_train)
+    # log_info(f"Train Accuracy: {accuracy_score(y_train, y_pred_train)}\n{classification_report(y_train, y_pred_train)}\n{confusion_matrix(y_train, y_pred_train)}")
     
     y_pred_test = svm_classifier.predict(X_test)
     log_info(f"Test Accuracy: {accuracy_score(y_test, y_pred_test)}\n{classification_report(y_test, y_pred_test)}\n{confusion_matrix(y_test, y_pred_test)}")
@@ -71,24 +71,27 @@ def train_and_eval_DT(X_train, y_train, X_test, y_test, max_depth=None, criterio
 ##############################################################################################
 train_files = [
 					'4_Patient_2022-02-05_08:59.h5'
-					# , '34_Patient_2023-04-04_22:31.h5'
-					# , '35_Patient_2023-04-03_19:51.h5'
-					# , '50_Patient_2023-06-12_21:10.h5'
-					# , '53_Patient_2023-06-25_21:39.h5'
-					# , '90_Patient_2023-03-21_12:19.h5' 
+					, '34_Patient_2023-04-04_22:31.h5'
+					, '35_Patient_2023-04-03_19:51.h5'
+					, '50_Patient_2023-06-12_21:10.h5'
+					, '53_Patient_2023-06-25_21:39.h5'
+					, '90_Patient_2023-03-21_12:19.h5' 
                 ]
 
-# test_file = '85_Patient_2023-05-12_17:53.h5'
-test_file = ['4_Patient_2022-02-05_08:59.h5']
+test_file = ['85_Patient_2023-05-12_17:53.h5']
+# test_file = ['4_Patient_2022-02-05_08:59.h5']
 
-features_csv_file = '/home/ms5267@drexel.edu/moberg-precicecap/ArtifactDetectionEval/data/FE_features_train.csv'
+features_train_csv_file = '/home/ms5267@drexel.edu/moberg-precicecap/ArtifactDetectionEval/data/FE_features_train.csv'
+features_test_csv_file = '/home/ms5267@drexel.edu/moberg-precicecap/ArtifactDetectionEval/data/FE_features_test.csv'
+
 mode = ['ABP','ART']
 
-df = pd.read_csv(features_csv_file, header=None)
+train_df = pd.read_csv(features_train_csv_file, header=None)
+test_df = pd.read_csv(features_test_csv_file, header=None)
 
-train_features = df[df[0].isin(train_files)][df[1].isin(mode)]
+train_features = train_df[train_df[0].isin(train_files)][train_df[1].isin(mode)]
 
-test_features = df[df[0].isin(test_file)][df[1].isin(mode)]
+test_features = test_df[test_df[0].isin(test_file)][test_df[1].isin(mode)]
 
 # Training data
 y_train = train_features.iloc[:, 2].to_numpy()

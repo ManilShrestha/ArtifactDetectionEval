@@ -51,7 +51,7 @@ def CNN_val(val_file, model=None):
 		dataset  = PulseFromHDF5Dataset(val_file, m, phase='test')
 
 		if len(dataset)!=0:
-			dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=4, shuffle=True, pin_memory=True)
+			dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=4, shuffle=False, pin_memory=True)
 			with torch.no_grad():
 				for _, data, label, _, _ in tqdm(dataloader):
 					inputs = data.to(device).float()

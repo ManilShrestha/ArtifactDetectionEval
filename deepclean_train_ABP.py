@@ -323,12 +323,13 @@ def compute_mean_std(train_files):
 if __name__ == '__main__':
 
 	train_files = [
-					'4_Patient_2022-02-05_08:59.h5'
-					, '34_Patient_2023-04-04_22:31.h5'
-					, '35_Patient_2023-04-03_19:51.h5'
-					, '50_Patient_2023-06-12_21:10.h5'
-					, '53_Patient_2023-06-25_21:39.h5'
-					, '90_Patient_2023-03-21_12:19.h5' ]
+					# '4_Patient_2022-02-05_08:59.h5'
+					'34_Patient_2023-04-04_22:31.h5'
+					# , '35_Patient_2023-04-03_19:51.h5'
+					# , '50_Patient_2023-06-12_21:10.h5'
+					# , '53_Patient_2023-06-25_21:39.h5'
+					# , '90_Patient_2023-03-21_12:19.h5' 
+					]
 	
 	# train_files = [
 	# 				'4_Patient_2022-02-05_08:59.h5'
@@ -349,7 +350,8 @@ if __name__ == '__main__':
 					# , '139_Patient_2024_Mar_4__7_32_51_662674.h5'
 					# ]
 	
-	test_file = '85_Patient_2023-05-12_17:53.h5'
+	test_file = '34_Patient_2023-04-04_22:31.h5'
+	# test_file = '85_Patient_2023-05-12_17:53.h5'
 	# test_file = '90_Patient_2023-03-21_12:19.h5'
 	
 	# train_files = ['73_Patient_2017_Dec_18__11_19_55_297272.h5', '59_Patient_2022-01-31_23:19.h5', '74_Patient_2023-08-05_06:00.h5', '34_Patient_2023-04-04_22:31.h5']

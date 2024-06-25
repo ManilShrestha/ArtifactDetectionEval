@@ -39,8 +39,13 @@ class TimeSeriesHDF5Dataset(Dataset):
 			log_info(f"No {dataset_name} in the hdf5 file: {self.hdf5_file}.")
 			self.mode_exists = False
 		else:
-			self.data = self.hdf5_file[dataset_name]
-			self.timestamp = self.hdf5_file[ts_dataset_name]
+			# Get the index of stop annotation and limit the data 
+			stop_idx = get_stop_idx(file_path, mode)
+
+			self.data = self.hdf5_file[dataset_name][:stop_idx]
+
+			self.timestamp = self.hdf5_file[ts_dataset_name][:stop_idx]
+
 			self.sampling_freq = round(get_sampling_freq(self.timestamp[0:10]))
 
 			self.file_path = file_path
@@ -97,6 +102,7 @@ class TimeSeriesHDF5Dataset(Dataset):
 		if self.sampling_freq!=config['sampling_rate']:
 			number_of_samples = int(len(segment) * config['sampling_rate'] / self.sampling_freq)
 			segment = resample(segment, number_of_samples)
+			timestamp_segment = resample_ts(timestamp_segment, number_of_samples)
 
 		if self.smoothen:
 			segment = moving_average_filter(segment, window_size=3)
@@ -110,7 +116,6 @@ class TimeSeriesHDF5Dataset(Dataset):
 	def close(self):
 		"""Close the HDF5 file."""
 		self.hdf5_file.close()
-		self.hdf5_file = None
 
 	def __del__(self):
 		self.close()
